@@ -25,7 +25,6 @@ bpy.types.Scene.directory_path = bpy.props.StringProperty(
     description="Choose a directory path"
 )
 
-
 # Define an operator to add DEFAULT folders to the list
 class AddDefaultFolderOperator(bpy.types.Operator):
     bl_idname = "scene.add_default_folder"
@@ -55,7 +54,7 @@ class AddNewFolderOperator(bpy.types.Operator):
     def execute(self, context):
         scene = context.scene
         folder = scene.folder_list.add()
-        folder.name = "New Folder"  # You can set a default folder name here
+        folder.name = "New Folder"  # Set a default folder name here
         return {'FINISHED'}
 
 # Define an operator to remove selected folders
@@ -100,6 +99,42 @@ class CreateProjectOperator(bpy.types.Operator):
         self.report({'INFO'}, "Project folders created successfully.")
         return {'FINISHED'}
 
+class UpdateProjectOperator(bpy.types.Operator):
+    bl_idname = "scene.update_project"
+    bl_label = "Update Project"
+    bl_description = "Update the project directory based on the current list"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        scene = context.scene
+        directory_path = bpy.path.abspath(scene.directory_path)
+
+        if not os.path.exists(directory_path):
+            self.report({'ERROR'}, "Directory does not exist.")
+            return {'CANCELLED'}
+
+        # Gather current Blender folder names
+        blender_folder_names = [folder.name for folder in scene.folder_list]
+
+        # Check folders in the directory
+        existing_folders = os.listdir(directory_path)
+
+        # Folders to be added and removed
+        folders_to_add = set(blender_folder_names) - set(existing_folders)
+        folders_to_remove = set(existing_folders) - set(blender_folder_names)
+
+        # Add new folders
+        for folder_name in folders_to_add:
+            folder_path = os.path.join(directory_path, folder_name)
+            os.makedirs(folder_path)
+
+        # Remove folders
+        for folder_name in folders_to_remove:
+            folder_path = os.path.join(directory_path, folder_name)
+            os.rmdir(folder_path)
+
+        self.report({'INFO'}, "Project folders updated successfully.")
+        return {'FINISHED'}
 
 class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
     bl_label = "Project Setup"
@@ -111,7 +146,6 @@ class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         scene = context.scene
-
 
         box=layout.box()
 
@@ -140,9 +174,7 @@ class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
         col.operator("scene.add_new_folder", text="", icon="ADD")
         col.operator("scene.remove_folder", text="", icon="REMOVE")
 
-
-            
-
+        box.operator("scene.update_project", text="Update Folder")
 
 classes = (
     VIEW3D_PT_project_setup_panel,
@@ -150,13 +182,11 @@ classes = (
     AddNewFolderOperator,
     RemoveFolderOperator,
     CreateProjectOperator,
+    UpdateProjectOperator,
 )
-
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-
-
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)

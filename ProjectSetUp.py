@@ -1,8 +1,8 @@
 bl_info = {
-    "name": "Project Setup",
+    "name": "Project Utility",
     "author": "Renaud Lapierre",
     "version": (1, 0),
-    "blender": (3, 6, 0),
+    "blender": (4, 0, 0),
     "location": "View3D > UI > Tool",
     "description": "Set Up Project",
     "category": "Tools",
@@ -10,6 +10,7 @@ bl_info = {
 
 import bpy
 import os
+import subprocess
 
 # Define a custom property to store the list of folders
 bpy.types.Scene.folder_list = bpy.props.CollectionProperty(type=bpy.types.PropertyGroup)
@@ -23,6 +24,14 @@ bpy.types.Scene.directory_path = bpy.props.StringProperty(
     subtype='DIR_PATH',
     default="",
     description="Choose a directory path"
+)
+
+# Define a property to store the file path of the .Pur
+bpy.types.Scene.pure_ref_path = bpy.props.StringProperty(
+    name="pure_ref_path",
+    description="File path of the .pur",
+    default="",
+    subtype='FILE_PATH'
 )
 
 # Define an operator to add DEFAULT folders to the list
@@ -136,6 +145,31 @@ class UpdateProjectOperator(bpy.types.Operator):
         self.report({'INFO'}, "Project folders updated successfully.")
         return {'FINISHED'}
 
+class OpenPureRefOperator(bpy.types.Operator):
+    bl_idname = "rockhelper.open_pureref"
+    bl_label = "Open PureRef Board"
+    bl_description = "Open the specified PureRef project file"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        pure_ref_path = context.scene.pure_ref_path
+
+        if pure_ref_path and pure_ref_path.lower().endswith(".pur"):
+            try:
+                # Convert the path to an absolute path
+                absolute_path = bpy.path.abspath(pure_ref_path)
+                
+                if os.path.isfile(absolute_path):
+                    subprocess.Popen([absolute_path], shell=True)
+                else:
+                    self.report({'ERROR'}, f"PureRef project file not found: {absolute_path}")
+            except Exception as e:
+                self.report({'ERROR'}, f"Error opening PureRef: {str(e)}")
+        else:
+            self.report({'ERROR'}, "Please specify a valid PureRef project file.")
+
+        return {'FINISHED'}
+
 class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
     bl_label = "Project Setup"
     bl_idname = "VIEW3D_PT_project_setup"
@@ -176,6 +210,13 @@ class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
 
         box.operator("scene.update_project", text="Update Folder")
 
+        box=layout.box()
+        box.label(text="PureRef File:")
+        # Add the PureRef file path
+        box.prop(context.scene, "pure_ref_path", text="", expand=False)
+        # Add Open PureRef Board Button
+        box.operator("rockhelper.open_pureref", icon="IMAGE_DATA", text="Open PureRef Board")
+        
 classes = (
     VIEW3D_PT_project_setup_panel,
     AddDefaultFolderOperator,
@@ -183,6 +224,7 @@ classes = (
     RemoveFolderOperator,
     CreateProjectOperator,
     UpdateProjectOperator,
+    OpenPureRefOperator,
 )
 def register():
     for cls in classes:

@@ -1,5 +1,5 @@
 # Blender-ProjectSetUp
-A Blender add-on that helps the user create a folder structure for their projects, all within Blender
+A Blender add-on that helps the user create a folder structure for their projects, all within Blender. This add-on also enable the user to quickly set a Pureref board per project.
 
 To install : F4 > Preferences > Add-ons > Install > Project SetUp
 

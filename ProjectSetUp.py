@@ -45,7 +45,7 @@ class AddDefaultFolderOperator(bpy.types.Operator):
         scene = context.scene
         
         # Default folder names
-        default_names = ["Blender", "Photoshop", "Painter", "Geo", "Textures", "References", "Renders"]
+        default_names = ["Blender", "Geo", "Painter", "Photoshop", "References", "Renders", "Textures"]
 
         for name in default_names:
             folder = scene.folder_list.add()
@@ -170,6 +170,31 @@ class OpenPureRefOperator(bpy.types.Operator):
 
         return {'FINISHED'}
 
+
+
+#Preferences
+class ProjectSetUpPreferences(bpy.types.AddonPreferences):
+    bl_idname = __name__
+
+    github_url: bpy.props.StringProperty(
+        name="GitHub URL",
+        description="https://github.com/RenaudLapierre/Blender-ProjectSetUp",
+        default="https://github.com/RenaudLapierre/Blender-ProjectSetUp",
+    )
+
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row()
+
+        #row.label(text="Github Page: ")
+        row.operator("wm.url_open", text="GitHub Page", icon="LINK_BLEND").url = self.github_url
+
+        layout.label(text="If you'd like to change the default list, you can do so in the 'ProjectSetUp.py' file.")
+        layout.label(text="The list is near the top (default_names). I haven't find a way to make this feature user friendly yet.")
+        layout.label(text="If you have anny ideas, please reach out!")
+
+
 class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
     bl_label = "Project Setup"
     bl_idname = "VIEW3D_PT_project_setup"
@@ -213,7 +238,7 @@ class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
         box=layout.box()
         box.label(text="PureRef File:")
         # Add the PureRef file path
-        box.prop(context.scene, "pure_ref_path", text="", expand=False)
+        box.prop(context.scene, "pure_ref_path", text="")
         # Add Open PureRef Board Button
         box.operator("rockhelper.open_pureref", icon="IMAGE_DATA", text="Open PureRef Board")
         
@@ -225,6 +250,7 @@ classes = (
     CreateProjectOperator,
     UpdateProjectOperator,
     OpenPureRefOperator,
+    ProjectSetUpPreferences
 )
 def register():
     for cls in classes:

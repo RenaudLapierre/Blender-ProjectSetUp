@@ -147,6 +147,7 @@ class UpdateProjectOperator(bpy.types.Operator):
                 folder_path = os.path.join(directory_path, folder_name)
                 shutil.rmtree(folder_path)
 
+
             self.report({'INFO'}, "Project folders updated successfully.")
             return {'FINISHED'}
         except Exception as e:
@@ -191,15 +192,24 @@ class ProjectSetUpPreferences(bpy.types.AddonPreferences):
         default="https://github.com/RenaudLapierre/Blender-ProjectSetUp",
     )
 
+    sketchfab_url: bpy.props.StringProperty(
+        name="Sketchfab URL",
+        description="https://sketchfab.com/renaudlapierre",
+        default="https://sketchfab.com/renaudlapierre",
+    )
+
+
     def draw(self, context):
         layout = self.layout
         row = layout.row()
 
         row.operator("wm.url_open", text="GitHub Page", icon="LINK_BLEND").url = self.github_url
+        row.operator("wm.url_open", text="Buy me a coffee", icon="FUND").url = self.sketchfab_url
 
         layout.label(text="If you'd like to change the default list, you can do so in the 'ProjectSetUp.py' file.")
         layout.label(text="The list is near the top (default_names). I haven't find a way to make this feature user friendly yet.")
         layout.label(text="If you have any ideas, please reach out!")
+
 
 class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
     bl_label = "Project Setup"

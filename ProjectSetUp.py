@@ -11,6 +11,7 @@ bl_info = {
 import bpy
 import os
 import subprocess
+import shutil
 
 # Define a custom property to store the list of folders
 bpy.types.Scene.folder_list = bpy.props.CollectionProperty(type=bpy.types.PropertyGroup)
@@ -99,10 +100,13 @@ class CreateProjectOperator(bpy.types.Operator):
             folder_name = folder_item.name
             folder_path = os.path.join(directory_path, folder_name)
 
-            if not os.path.exists(folder_path):
-                os.makedirs(folder_path)
-            else:
-                self.report({'ERROR'}, f"Folder '{folder_name}' already exists.")
+            try:
+                if not os.path.exists(folder_path):
+                    os.makedirs(folder_path)
+                else:
+                    raise FileExistsError(f"Folder '{folder_name}' already exists.")
+            except Exception as e:
+                self.report({'ERROR'}, f"Error creating folder: {str(e)}")
                 return {'CANCELLED'}
 
         self.report({'INFO'}, "Project folders created successfully.")
@@ -132,15 +136,22 @@ class UpdateProjectOperator(bpy.types.Operator):
         folders_to_add = set(blender_folder_names) - set(existing_folders)
         folders_to_remove = set(existing_folders) - set(blender_folder_names)
 
-        # Add new folders
-        for folder_name in folders_to_add:
-            folder_path = os.path.join(directory_path, folder_name)
-            os.makedirs(folder_path)
+        try:
+            # Add new folders
+            for folder_name in folders_to_add:
+                folder_path = os.path.join(directory_path, folder_name)
+                os.mkdir(folder_path)
 
-        # Remove folders
-        for folder_name in folders_to_remove:
-            folder_path = os.path.join(directory_path, folder_name)
-            os.rmdir(folder_path)
+            # Remove folders
+            for folder_name in folders_to_remove:
+                folder_path = os.path.join(directory_path, folder_name)
+                shutil.rmtree(folder_path)
+
+            self.report({'INFO'}, "Project folders updated successfully.")
+            return {'FINISHED'}
+        except Exception as e:
+            self.report({'ERROR'}, f"Error updating project folders: {str(e)}")
+            return {'CANCELLED'}
 
         self.report({'INFO'}, "Project folders updated successfully.")
         return {'FINISHED'}
@@ -170,8 +181,6 @@ class OpenPureRefOperator(bpy.types.Operator):
 
         return {'FINISHED'}
 
-
-
 #Preferences
 class ProjectSetUpPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
@@ -182,18 +191,15 @@ class ProjectSetUpPreferences(bpy.types.AddonPreferences):
         default="https://github.com/RenaudLapierre/Blender-ProjectSetUp",
     )
 
-
     def draw(self, context):
         layout = self.layout
         row = layout.row()
 
-        #row.label(text="Github Page: ")
         row.operator("wm.url_open", text="GitHub Page", icon="LINK_BLEND").url = self.github_url
 
         layout.label(text="If you'd like to change the default list, you can do so in the 'ProjectSetUp.py' file.")
         layout.label(text="The list is near the top (default_names). I haven't find a way to make this feature user friendly yet.")
-        layout.label(text="If you have anny ideas, please reach out!")
-
+        layout.label(text="If you have any ideas, please reach out!")
 
 class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
     bl_label = "Project Setup"
@@ -233,7 +239,7 @@ class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
         col.operator("scene.add_new_folder", text="", icon="ADD")
         col.operator("scene.remove_folder", text="", icon="REMOVE")
 
-        box.operator("scene.update_project", text="Update Folder")
+        box.operator("scene.update_project", text="Update Folder", icon="FILE_REFRESH")
 
         box=layout.box()
         box.label(text="PureRef File:")
@@ -250,7 +256,7 @@ classes = (
     CreateProjectOperator,
     UpdateProjectOperator,
     OpenPureRefOperator,
-    ProjectSetUpPreferences
+    ProjectSetUpPreferences,
 )
 def register():
     for cls in classes:

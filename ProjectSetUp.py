@@ -12,6 +12,9 @@ import bpy
 import os
 import subprocess
 import shutil
+from pathlib import Path
+
+DEFAULT_FOLDER_NAMES = ["Blender", "Geo", "Painter", "Photoshop", "References", "Renders", "Textures"]
 
 # Define a custom property to store the list of folders
 bpy.types.Scene.folder_list = bpy.props.CollectionProperty(type=bpy.types.PropertyGroup)
@@ -45,10 +48,7 @@ class AddDefaultFolderOperator(bpy.types.Operator):
     def execute(self, context):
         scene = context.scene
         
-        # Default folder names
-        default_names = ["Blender", "Geo", "Painter", "Photoshop", "References", "Renders", "Textures"]
-
-        for name in default_names:
+        for name in DEFAULT_FOLDER_NAMES:
             folder = scene.folder_list.add()
             folder.name = name
             
@@ -90,7 +90,7 @@ class CreateProjectOperator(bpy.types.Operator):
 
     def execute(self, context):
         scene = context.scene
-        directory_path = bpy.path.abspath(scene.directory_path)
+        directory_path = Path(scene.directory_path).resolve()
 
         if not os.path.exists(directory_path):
             self.report({'ERROR'}, "Directory does not exist.")
@@ -98,13 +98,10 @@ class CreateProjectOperator(bpy.types.Operator):
 
         for folder_item in scene.folder_list:
             folder_name = folder_item.name
-            folder_path = os.path.join(directory_path, folder_name)
+            folder_path = directory_path / folder_name
 
             try:
-                if not os.path.exists(folder_path):
-                    os.makedirs(folder_path)
-                else:
-                    raise FileExistsError(f"Folder '{folder_name}' already exists.")
+                os.makedirs(folder_path, exist_ok=True)
             except Exception as e:
                 self.report({'ERROR'}, f"Error creating folder: {str(e)}")
                 return {'CANCELLED'}
@@ -120,35 +117,37 @@ class UpdateProjectOperator(bpy.types.Operator):
 
     def execute(self, context):
         scene = context.scene
-        directory_path = bpy.path.abspath(scene.directory_path)
+        directory_path = Path(scene.directory_path).resolve()
 
         if not os.path.exists(directory_path):
             self.report({'ERROR'}, "Directory does not exist.")
             return {'CANCELLED'}
 
         # Gather current Blender folder names
-        blender_folder_names = [folder.name for folder in scene.folder_list]
+        blender_folder_names = {folder.name for folder in scene.folder_list}
 
         # Check folders in the directory
-        existing_folders = os.listdir(directory_path)
+        existing_folders = set(os.listdir(directory_path))
 
         # Folders to be added and removed
-        folders_to_add = set(blender_folder_names) - set(existing_folders)
-        folders_to_remove = set(existing_folders) - set(blender_folder_names)
+        folders_to_add = blender_folder_names - existing_folders
+        folders_to_remove = existing_folders - blender_folder_names
 
         try:
             # Add new folders
             for folder_name in folders_to_add:
-                folder_path = os.path.join(directory_path, folder_name)
+                folder_path = directory_path / folder_name
                 os.mkdir(folder_path)
 
             # Remove folders
             for folder_name in folders_to_remove:
-                folder_path = os.path.join(directory_path, folder_name)
+                folder_path = directory_path / folder_name
                 shutil.rmtree(folder_path)
 
-
             self.report({'INFO'}, "Project folders updated successfully.")
+            return {'FINISHED'}
+        except FileExistsError as e:
+            self.report({'INFO'}, f"Folder '{e.filename}' already exists. Skipping creation.")
             return {'FINISHED'}
         except Exception as e:
             self.report({'ERROR'}, f"Error updating project folders: {str(e)}")
@@ -172,7 +171,8 @@ class OpenPureRefOperator(bpy.types.Operator):
                 absolute_path = bpy.path.abspath(pure_ref_path)
                 
                 if os.path.isfile(absolute_path):
-                    subprocess.Popen([absolute_path], shell=True)
+                    with open(absolute_path, 'rb') as file:
+                        subprocess.Popen([absolute_path], shell=True)
                 else:
                     self.report({'ERROR'}, f"PureRef project file not found: {absolute_path}")
             except Exception as e:
@@ -198,7 +198,6 @@ class ProjectSetUpPreferences(bpy.types.AddonPreferences):
         default="https://sketchfab.com/renaudlapierre",
     )
 
-
     def draw(self, context):
         layout = self.layout
         row = layout.row()
@@ -207,9 +206,8 @@ class ProjectSetUpPreferences(bpy.types.AddonPreferences):
         row.operator("wm.url_open", text="Buy me a coffee", icon="FUND").url = self.sketchfab_url
 
         layout.label(text="If you'd like to change the default list, you can do so in the 'ProjectSetUp.py' file.")
-        layout.label(text="The list is near the top (default_names). I haven't find a way to make this feature user friendly yet.")
+        layout.label(text="The list is near the top (DEFAULT_FOLDER_NAMES =). I haven't find a way to make this feature more user friendly yet.")
         layout.label(text="If you have any ideas, please reach out!")
-
 
 class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
     bl_label = "Project Setup"

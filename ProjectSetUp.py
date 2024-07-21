@@ -38,6 +38,14 @@ bpy.types.Scene.pure_ref_path = bpy.props.StringProperty(
     subtype='FILE_PATH'
 )
 
+#Define a property to store name of .blend file
+bpy.types.Scene.blend_name = bpy.props.StringProperty(
+    name="Blend Name",
+    subtype='FILE_NAME',
+    default="",
+    description="Set the name of the .blend file"
+)
+
 # Define an operator to add DEFAULT folders to the list
 class AddDefaultFolderOperator(bpy.types.Operator):
     bl_idname = "scene.add_default_folder"
@@ -107,6 +115,40 @@ class CreateProjectOperator(bpy.types.Operator):
                 return {'CANCELLED'}
 
         self.report({'INFO'}, "Project folders created successfully.")
+        return {'FINISHED'}
+
+class SetBlendFileOperator(bpy.types.Operator):
+    bl_idname = "scene.set_blend_file"
+    bl_label = "Set Blend File"
+    bl_description = "Set the name of the .blend file and save inside the Blender folder"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        scene = context.scene
+
+        # Get the directory path and blend file name
+        directory_path = Path(scene.directory_path).resolve()
+        blend_name = scene.blend_name
+
+        # Ensure the directory path ends with a slash
+        if not directory_path.as_posix().endswith('/'):
+            directory_path /= ''  # This ensures that the path ends with a separator
+
+        # Construct the path to the Blender folder
+        blender_folder_path = directory_path / "Blender"
+
+        # Ensure the Blender folder exists
+        if not blender_folder_path.exists():
+            self.report({'ERROR'}, "Blender folder does not exist.")
+            return {'CANCELLED'}
+
+        # Construct the full file path with ".blend" extension inside the Blender folder
+        save_path = blender_folder_path / f"{blend_name}.blend"
+
+        # Save the blend file
+        bpy.ops.wm.save_as_mainfile(filepath=str(save_path))
+        
+        self.report({'INFO'}, f"Blend file saved to {save_path}")
         return {'FINISHED'}
 
 class UpdateProjectOperator(bpy.types.Operator):
@@ -227,11 +269,18 @@ class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
         col.label(text="Project Folder:")
         col.prop(context.scene, "directory_path", text="")
 
+        # Input filed for blend file name
+        col = box.column(align=True)
+        col.label(text=".Blend Name:")
+        col.prop(context.scene, "blend_name", text="")
+
         # Add a button to add DEFAULT folders to the list
         box.operator("scene.add_default_folder", text="Add Default Folders", icon="NEWFOLDER")
 
         # Add a button to create the project
         box.operator("scene.create_project", icon="FILE_FOLDER")
+
+        box.operator("scene.set_blend_file", icon="FILE_TICK", text="Save Blend File")
 
         box.label(text="Project Structure:")
 
@@ -262,6 +311,7 @@ classes = (
     AddNewFolderOperator,
     RemoveFolderOperator,
     CreateProjectOperator,
+    SetBlendFileOperator,
     UpdateProjectOperator,
     OpenPureRefOperator,
     ProjectSetUpPreferences,

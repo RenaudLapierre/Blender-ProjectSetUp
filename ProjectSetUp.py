@@ -46,7 +46,29 @@ bpy.types.Scene.blend_name = bpy.props.StringProperty(
     description="Set the name of the .blend file"
 )
 
-# Define an operator to add DEFAULT folders to the list
+# Define a property to store custom folder names
+bpy.types.Scene.custom_folder_names = bpy.props.StringProperty(
+    name="Custom Folder Names",
+    description="Enter custom folder names as a comma-separated list",
+    default=""
+)
+
+
+class UpdateFolderPreferencesOperator(bpy.types.Operator):
+    bl_idname = "scene.update_folder_preferences"
+    bl_label = "Update Folder Preferences"
+    bl_description = "Update the default folder structure in preferences"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        prefs = context.preferences.addons[__name__].preferences
+        # Save the custom folder names to preferences
+        prefs.default_folder_names = context.scene.custom_folder_names
+        self.report({'INFO'}, "Folder preferences updated.")
+        return {'FINISHED'}
+
+
+
 class AddDefaultFolderOperator(bpy.types.Operator):
     bl_idname = "scene.add_default_folder"
     bl_label = "Add Default Folders"
@@ -55,12 +77,22 @@ class AddDefaultFolderOperator(bpy.types.Operator):
 
     def execute(self, context):
         scene = context.scene
-        
-        for name in DEFAULT_FOLDER_NAMES:
+        prefs = context.preferences.addons[__name__].preferences
+
+        # Clear existing folders in the scene
+        scene.folder_list.clear()
+
+        # Get default folder names from preferences
+        default_folder_names = [name.strip() for name in prefs.default_folder_names.split(',')]
+
+        # Add default folders
+        for name in default_folder_names:
             folder = scene.folder_list.add()
             folder.name = name
-            
+
         return {'FINISHED'}
+
+
 
 # Define an operator to add NEW folders to the list
 class AddNewFolderOperator(bpy.types.Operator):
@@ -89,7 +121,6 @@ class RemoveFolderOperator(bpy.types.Operator):
             context.scene.active_folder_index = -1  # Reset active index
         return {'FINISHED'}
 
-# Define an operator to create the project folders
 class CreateProjectOperator(bpy.types.Operator):
     bl_idname = "scene.create_project"
     bl_label = "Create Project"
@@ -104,10 +135,11 @@ class CreateProjectOperator(bpy.types.Operator):
             self.report({'ERROR'}, "Directory does not exist.")
             return {'CANCELLED'}
 
-        for folder_item in scene.folder_list:
-            folder_name = folder_item.name
-            folder_path = directory_path / folder_name
+        # Get folder names from the scene's folder_list
+        folder_names = [folder.name for folder in scene.folder_list]
 
+        for name in folder_names:
+            folder_path = directory_path / name
             try:
                 os.makedirs(folder_path, exist_ok=True)
             except Exception as e:
@@ -116,6 +148,7 @@ class CreateProjectOperator(bpy.types.Operator):
 
         self.report({'INFO'}, "Project folders created successfully.")
         return {'FINISHED'}
+
 
 class SetBlendFileOperator(bpy.types.Operator):
     bl_idname = "scene.set_blend_file"
@@ -240,6 +273,14 @@ class ProjectSetUpPreferences(bpy.types.AddonPreferences):
         default="https://sketchfab.com/renaudlapierre",
     )
 
+    # Define the property for custom folder names as a string
+    default_folder_names: bpy.props.StringProperty(
+        name="Default Folder Names",
+        description="Enter custom folder names as a comma-separated list",
+        default="Blender,Geo,Painter,Photoshop,References,Renders,Textures"
+    )
+
+
     def draw(self, context):
         layout = self.layout
         row = layout.row()
@@ -247,8 +288,10 @@ class ProjectSetUpPreferences(bpy.types.AddonPreferences):
         row.operator("wm.url_open", text="GitHub Page", icon="LINK_BLEND").url = self.github_url
         row.operator("wm.url_open", text="Buy me a coffee", icon="FUND").url = self.sketchfab_url
 
-        layout.label(text="If you'd like to change the default list, you can do so in the 'ProjectSetUp.py' file.")
-        layout.label(text="The list is near the top (DEFAULT_FOLDER_NAMES =). I haven't find a way to make this feature more user friendly yet.")
+        layout.label(text="If you'd like to change the default list, you can do so here:")
+        layout.label(text="Necessary Folder Name: Blender")
+        layout.prop(self, "default_folder_names", text="Default Folder Names")
+
         layout.label(text="If you have any ideas, please reach out!")
 
 class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
@@ -315,6 +358,7 @@ classes = (
     UpdateProjectOperator,
     OpenPureRefOperator,
     ProjectSetUpPreferences,
+    UpdateFolderPreferencesOperator,
 )
 def register():
     for cls in classes:

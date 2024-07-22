@@ -2,7 +2,7 @@ bl_info = {
     "name": "Project Utility",
     "author": "Renaud Lapierre",
     "version": (1, 0),
-    "blender": (4, 0, 0),
+    "blender": (4, 2, 0),
     "location": "View3D > UI > Tool",
     "description": "Set Up Project",
     "category": "Tools",
@@ -54,7 +54,7 @@ bpy.types.Scene.custom_folder_names = bpy.props.StringProperty(
 )
 
 
-class UpdateFolderPreferencesOperator(bpy.types.Operator):
+class OBJECT_OT_UpdateFolderPreferences(bpy.types.Operator):
     bl_idname = "scene.update_folder_preferences"
     bl_label = "Update Folder Preferences"
     bl_description = "Update the default folder structure in preferences"
@@ -69,7 +69,7 @@ class UpdateFolderPreferencesOperator(bpy.types.Operator):
 
 
 
-class AddDefaultFolderOperator(bpy.types.Operator):
+class OBJECT_OT_AddDefaultFolder(bpy.types.Operator):
     bl_idname = "scene.add_default_folder"
     bl_label = "Add Default Folders"
     bl_description = "Add the default folders"
@@ -95,7 +95,7 @@ class AddDefaultFolderOperator(bpy.types.Operator):
 
 
 # Define an operator to add NEW folders to the list
-class AddNewFolderOperator(bpy.types.Operator):
+class OBJECT_OT_AddNewFolder(bpy.types.Operator):
     bl_idname = "scene.add_new_folder"
     bl_label = "Add Folder"
     bl_description = "Add a new folders"
@@ -108,7 +108,7 @@ class AddNewFolderOperator(bpy.types.Operator):
         return {'FINISHED'}
 
 # Define an operator to remove selected folders
-class RemoveFolderOperator(bpy.types.Operator):
+class OBJECT_OT_RemoveFolder(bpy.types.Operator):
     bl_idname = "scene.remove_folder"
     bl_label = "Remove Folder"
     bl_description = "Remove selected folder"
@@ -121,7 +121,7 @@ class RemoveFolderOperator(bpy.types.Operator):
             context.scene.active_folder_index = -1  # Reset active index
         return {'FINISHED'}
 
-class CreateProjectOperator(bpy.types.Operator):
+class OBJECT_OT_CreateProject(bpy.types.Operator):
     bl_idname = "scene.create_project"
     bl_label = "Create Project"
     bl_description = "Create the project directory"
@@ -150,7 +150,7 @@ class CreateProjectOperator(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class SetBlendFileOperator(bpy.types.Operator):
+class OBJECT_OT_SetBlendFile(bpy.types.Operator):
     bl_idname = "scene.set_blend_file"
     bl_label = "Set Blend File"
     bl_description = "Set the name of the .blend file and save inside the Blender folder"
@@ -184,7 +184,7 @@ class SetBlendFileOperator(bpy.types.Operator):
         self.report({'INFO'}, f"Blend file saved to {save_path}")
         return {'FINISHED'}
 
-class UpdateProjectOperator(bpy.types.Operator):
+class OBJECT_OT_UpdateProject(bpy.types.Operator):
     bl_idname = "scene.update_project"
     bl_label = "Update Project"
     bl_description = "Update the project directory based on the current list"
@@ -231,7 +231,7 @@ class UpdateProjectOperator(bpy.types.Operator):
         self.report({'INFO'}, "Project folders updated successfully.")
         return {'FINISHED'}
 
-class OpenPureRefOperator(bpy.types.Operator):
+class OBJECT_OT_OpenPureRef(bpy.types.Operator):
     bl_idname = "rockhelper.open_pureref"
     bl_label = "Open PureRef Board"
     bl_description = "Open the specified PureRef project file"
@@ -307,42 +307,34 @@ class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
 
         box=layout.box()
 
-        # Add an input field to choose a directory path
-        col = box.column(align=True)
-        col.label(text="Project Folder:")
-        col.prop(context.scene, "directory_path", text="")
+        box.label(icon="FILE_FOLDER", text="Path:")
+        box.prop(context.scene, "directory_path", text="Project Folder")
+        box.prop(context.scene, "blend_name", text=".Blend Name")
 
-        # Input filed for blend file name
-        col = box.column(align=True)
-        col.label(text=".Blend Name:")
-        col.prop(context.scene, "blend_name", text="")
+        box=layout.box()
+
+        box.label(icon="OUTLINER", text="Setup:")
 
         # Add a button to add DEFAULT folders to the list
         box.operator("scene.add_default_folder", text="Add Default Folders", icon="NEWFOLDER")
-
         # Add a button to create the project
         box.operator("scene.create_project", icon="FILE_FOLDER")
-
         box.operator("scene.set_blend_file", icon="FILE_TICK", text="Save Blend File")
 
         box.label(text="Project Structure:")
-
         # Use split() to create vertical space
         split = box.split(factor=0.9, align=True)
-
         # Display the list of folders using a template_list
         col = split.column()
         col.template_list("UI_UL_list", "folder_list", scene, "folder_list", scene, "active_folder_index", type='DEFAULT', rows=3)
-
         # Create a column for the buttons
         col = split.column()
         col.operator("scene.add_new_folder", text="", icon="ADD")
         col.operator("scene.remove_folder", text="", icon="REMOVE")
-
         box.operator("scene.update_project", text="Update Folder", icon="FILE_REFRESH")
 
         box=layout.box()
-        box.label(text="PureRef File:")
+        box.label(icon="IMAGE_BACKGROUND", text="PureRef File:")
         # Add the PureRef file path
         box.prop(context.scene, "pure_ref_path", text="")
         # Add Open PureRef Board Button
@@ -350,15 +342,15 @@ class VIEW3D_PT_project_setup_panel(bpy.types.Panel):
         
 classes = (
     VIEW3D_PT_project_setup_panel,
-    AddDefaultFolderOperator,
-    AddNewFolderOperator,
-    RemoveFolderOperator,
-    CreateProjectOperator,
-    SetBlendFileOperator,
-    UpdateProjectOperator,
-    OpenPureRefOperator,
     ProjectSetUpPreferences,
-    UpdateFolderPreferencesOperator,
+    OBJECT_OT_AddDefaultFolder,
+    OBJECT_OT_AddNewFolder,
+    OBJECT_OT_RemoveFolder,
+    OBJECT_OT_CreateProject,
+    OBJECT_OT_SetBlendFile,
+    OBJECT_OT_UpdateProject,
+    OBJECT_OT_OpenPureRef,
+    OBJECT_OT_UpdateFolderPreferences,
 )
 def register():
     for cls in classes:

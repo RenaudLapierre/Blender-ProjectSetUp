@@ -10,6 +10,12 @@ To add a project structure :
 
 https://github.com/user-attachments/assets/b2828cb8-e98a-41d3-8b68-491289a80482
 
+To change the default folders for custom folders :
+
+https://github.com/user-attachments/assets/a69d015e-a948-48a3-b552-22da1e148041
+
+
+
 
 To open a Pureref board :
 

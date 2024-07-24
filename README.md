@@ -8,10 +8,6 @@ Add-on location : Tool > Project SetUp
 
 To add a project structure :
 
-https://github.com/RenaudLapierre/Blender-ProjectSetUp/assets/147946907/2fccee3b-9b3d-41be-8906-6df421ae41a3
-
-
-
 https://github.com/user-attachments/assets/b2828cb8-e98a-41d3-8b68-491289a80482
 
 

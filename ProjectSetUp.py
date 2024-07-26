@@ -107,19 +107,60 @@ class OBJECT_OT_AddNewFolder(bpy.types.Operator):
         folder.name = "New Folder"  # Set a default folder name here
         return {'FINISHED'}
 
-# Define an operator to remove selected folders
 class OBJECT_OT_RemoveFolder(bpy.types.Operator):
     bl_idname = "scene.remove_folder"
     bl_label = "Remove Folder"
     bl_description = "Remove selected folder"
     bl_options = {"REGISTER", "UNDO"}
 
+    confirm: bpy.props.BoolProperty(default=False)
+
     def execute(self, context):
         scene = context.scene
-        if context.scene.folder_list and context.scene.active_folder_index >= 0:
-            scene.folder_list.remove(context.scene.active_folder_index)
-            context.scene.active_folder_index = -1  # Reset active index
+        folder_index = scene.active_folder_index
+        if folder_index < 0 or folder_index >= len(scene.folder_list):
+            self.report({'ERROR'}, "No folder selected.")
+            return {'CANCELLED'}
+
+        folder_name = scene.folder_list[folder_index].name
+        directory_path = Path(scene.directory_path).resolve()
+        folder_path = directory_path / folder_name
+
+        if folder_path.exists() and not self.confirm:
+            bpy.ops.scene.confirm_remove_folder('INVOKE_DEFAULT')
+            return {'CANCELLED'}
+
+        if folder_path.exists():
+            try:
+                shutil.rmtree(folder_path)
+                self.report({'INFO'}, f"Folder '{folder_name}' removed successfully.")
+            except Exception as e:
+                self.report({'ERROR'}, f"Error removing folder: {str(e)}")
+                return {'CANCELLED'}
+        else:
+            self.report({'WARNING'}, f"Folder '{folder_name}' does not exist.")
+
+        scene.folder_list.remove(folder_index)
+        scene.active_folder_index = -1  # Reset active index
         return {'FINISHED'}
+
+class OBJECT_OT_ConfirmRemoveFolder(bpy.types.Operator):
+    bl_idname = "scene.confirm_remove_folder"
+    bl_label = "Confirm Folder Removal"
+    bl_description = "Confirm the removal of the selected folder"
+
+    def execute(self, context):
+        bpy.ops.scene.remove_folder('INVOKE_DEFAULT', confirm=True)
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="The selected folder exists. Do you want to delete it?")
+
 
 class OBJECT_OT_CreateProject(bpy.types.Operator):
     bl_idname = "scene.create_project"
@@ -127,12 +168,21 @@ class OBJECT_OT_CreateProject(bpy.types.Operator):
     bl_description = "Create the project directory"
     bl_options = {"REGISTER", "UNDO"}
 
+    confirm: bpy.props.BoolProperty(default=False)
+
     def execute(self, context):
         scene = context.scene
         directory_path = Path(scene.directory_path).resolve()
 
         if not os.path.exists(directory_path):
             self.report({'ERROR'}, "Directory does not exist.")
+            return {'CANCELLED'}
+
+        # Check if any folders already exist in the directory
+        existing_folders = [f for f in directory_path.iterdir() if f.is_dir()]
+
+        if existing_folders and not self.confirm:
+            bpy.ops.scene.confirm_create_project('INVOKE_DEFAULT')
             return {'CANCELLED'}
 
         # Get folder names from the scene's folder_list
@@ -148,6 +198,27 @@ class OBJECT_OT_CreateProject(bpy.types.Operator):
 
         self.report({'INFO'}, "Project folders created successfully.")
         return {'FINISHED'}
+
+
+
+class OBJECT_OT_ConfirmCreateProject(bpy.types.Operator):
+    bl_idname = "scene.confirm_create_project"
+    bl_label = "Confirm Project Creation"
+    bl_description = "Confirm the creation of the project directory"
+
+    def execute(self, context):
+        bpy.ops.scene.create_project('INVOKE_DEFAULT', confirm=True)
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="Folders already exist. Do you want to recreate them?")
+
+
 
 
 class OBJECT_OT_SetBlendFile(bpy.types.Operator):
@@ -346,7 +417,9 @@ classes = (
     OBJECT_OT_AddDefaultFolder,
     OBJECT_OT_AddNewFolder,
     OBJECT_OT_RemoveFolder,
+    OBJECT_OT_ConfirmRemoveFolder,
     OBJECT_OT_CreateProject,
+    OBJECT_OT_ConfirmCreateProject,
     OBJECT_OT_SetBlendFile,
     OBJECT_OT_UpdateProject,
     OBJECT_OT_OpenPureRef,

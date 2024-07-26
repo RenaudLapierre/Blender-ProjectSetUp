@@ -1,5 +1,5 @@
 bl_info = {
-    "name": "Project Utility",
+    "name": "Project Setup",
     "author": "Renaud Lapierre",
     "version": (1, 0),
     "blender": (4, 2, 0),

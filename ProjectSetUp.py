@@ -67,8 +67,6 @@ class OBJECT_OT_UpdateFolderPreferences(bpy.types.Operator):
         self.report({'INFO'}, "Folder preferences updated.")
         return {'FINISHED'}
 
-
-
 class OBJECT_OT_AddDefaultFolder(bpy.types.Operator):
     bl_idname = "scene.add_default_folder"
     bl_label = "Add Default Folders"
@@ -91,8 +89,6 @@ class OBJECT_OT_AddDefaultFolder(bpy.types.Operator):
             folder.name = name
 
         return {'FINISHED'}
-
-
 
 # Define an operator to add NEW folders to the list
 class OBJECT_OT_AddNewFolder(bpy.types.Operator):
@@ -144,14 +140,11 @@ class OBJECT_OT_RemoveFolder(bpy.types.Operator):
         scene.active_folder_index = -1  # Reset active index
         return {'FINISHED'}
 
+
 class OBJECT_OT_ConfirmRemoveFolder(bpy.types.Operator):
     bl_idname = "scene.confirm_remove_folder"
     bl_label = "Confirm Folder Removal"
     bl_description = "Confirm the removal of the selected folder"
-
-    def execute(self, context):
-        bpy.ops.scene.remove_folder('INVOKE_DEFAULT', confirm=True)
-        return {'FINISHED'}
 
     def invoke(self, context, event):
         wm = context.window_manager
@@ -161,6 +154,9 @@ class OBJECT_OT_ConfirmRemoveFolder(bpy.types.Operator):
         layout = self.layout
         layout.label(text="The selected folder exists. Do you want to delete it?")
 
+    def execute(self, context):
+        bpy.ops.scene.remove_folder(confirm=True)
+        return {'FINISHED'}
 
 class OBJECT_OT_CreateProject(bpy.types.Operator):
     bl_idname = "scene.create_project"
@@ -199,16 +195,10 @@ class OBJECT_OT_CreateProject(bpy.types.Operator):
         self.report({'INFO'}, "Project folders created successfully.")
         return {'FINISHED'}
 
-
-
 class OBJECT_OT_ConfirmCreateProject(bpy.types.Operator):
     bl_idname = "scene.confirm_create_project"
     bl_label = "Confirm Project Creation"
     bl_description = "Confirm the creation of the project directory"
-
-    def execute(self, context):
-        bpy.ops.scene.create_project('INVOKE_DEFAULT', confirm=True)
-        return {'FINISHED'}
 
     def invoke(self, context, event):
         wm = context.window_manager
@@ -218,8 +208,9 @@ class OBJECT_OT_ConfirmCreateProject(bpy.types.Operator):
         layout = self.layout
         layout.label(text="Folders already exist. Do you want to recreate them?")
 
-
-
+    def execute(self, context):
+        bpy.ops.scene.create_project(confirm=True)
+        return {'FINISHED'}
 
 class OBJECT_OT_SetBlendFile(bpy.types.Operator):
     bl_idname = "scene.set_blend_file"
@@ -255,6 +246,7 @@ class OBJECT_OT_SetBlendFile(bpy.types.Operator):
         self.report({'INFO'}, f"Blend file saved to {save_path}")
         return {'FINISHED'}
 
+
 class OBJECT_OT_UpdateProject(bpy.types.Operator):
     bl_idname = "scene.update_project"
     bl_label = "Update Project"
@@ -265,42 +257,60 @@ class OBJECT_OT_UpdateProject(bpy.types.Operator):
         scene = context.scene
         directory_path = Path(scene.directory_path).resolve()
 
-        if not os.path.exists(directory_path):
+        if not directory_path.exists():
             self.report({'ERROR'}, "Directory does not exist.")
             return {'CANCELLED'}
 
-        # Gather current Blender folder names
-        blender_folder_names = {folder.name for folder in scene.folder_list}
+        # Gather existing folders in the directory
+        existing_folders = {f.name: f for f in directory_path.iterdir() if f.is_dir()}
 
-        # Check folders in the directory
-        existing_folders = set(os.listdir(directory_path))
+        # Get desired folder names from the scene's folder list
+        desired_folders = {folder.name for folder in scene.folder_list}
 
-        # Folders to be added and removed
-        folders_to_add = blender_folder_names - existing_folders
-        folders_to_remove = existing_folders - blender_folder_names
+        # Rename existing folders if necessary
+        for folder in scene.folder_list:
+            old_name = folder.name
+            new_name = folder.name
 
-        try:
-            # Add new folders
-            for folder_name in folders_to_add:
-                folder_path = directory_path / folder_name
-                os.mkdir(folder_path)
+            if old_name in existing_folders and old_name != new_name:
+                old_path = directory_path / old_name
+                new_path = directory_path / new_name
 
-            # Remove folders
-            for folder_name in folders_to_remove:
-                folder_path = directory_path / folder_name
-                shutil.rmtree(folder_path)
+                if not new_path.exists():
+                    try:
+                        old_path.rename(new_path)
+                        self.report({'INFO'}, f"Renamed folder '{old_name}' to '{new_name}'.")
+                    except Exception as e:
+                        self.report({'ERROR'}, f"Error renaming folder '{old_name}': {str(e)}")
+                        return {'CANCELLED'}
 
-            self.report({'INFO'}, "Project folders updated successfully.")
-            return {'FINISHED'}
-        except FileExistsError as e:
-            self.report({'INFO'}, f"Folder '{e.filename}' already exists. Skipping creation.")
-            return {'FINISHED'}
-        except Exception as e:
-            self.report({'ERROR'}, f"Error updating project folders: {str(e)}")
-            return {'CANCELLED'}
+        # Create missing folders
+        for folder_name in desired_folders:
+            folder_path = directory_path / folder_name
+            if not folder_path.exists():
+                try:
+                    folder_path.mkdir()
+                    self.report({'INFO'}, f"Created folder '{folder_name}'.")
+                except Exception as e:
+                    self.report({'ERROR'}, f"Error creating folder '{folder_name}': {str(e)}")
+                    return {'CANCELLED'}
+
+        # Identify and remove folders that are no longer needed
+        folders_to_remove = set(existing_folders.keys()) - desired_folders
+
+        for folder_name in folders_to_remove:
+            folder_path = directory_path / folder_name
+            if folder_path.exists():
+                try:
+                    shutil.rmtree(folder_path)
+                    self.report({'INFO'}, f"Removed folder '{folder_name}'.")
+                except Exception as e:
+                    self.report({'ERROR'}, f"Error removing folder '{folder_name}': {str(e)}")
+                    return {'CANCELLED'}
 
         self.report({'INFO'}, "Project folders updated successfully.")
         return {'FINISHED'}
+
 
 class OBJECT_OT_OpenPureRef(bpy.types.Operator):
     bl_idname = "rockhelper.open_pureref"
